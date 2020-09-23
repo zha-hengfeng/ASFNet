@@ -12,7 +12,7 @@ from argparse import ArgumentParser
 from builders.model_builder import build_model
 from builders.dataset_builder import build_dataset_train
 from utils.trainer import train
-from utils.eval_iou import eval
+from utils.compute_iou import eval_one_model
 from utils.tools.utils import setup_seed, init_weight, netParams
 from utils.loss import CrossEntropyLoss2d, ProbOhemCrossEntropy2d
 
@@ -92,7 +92,7 @@ def train_model(args):
             model = model.cuda()  # 1-card data parallel
 
     args.savedir = (args.savedir + args.dataset + '/' + args.model + '/bs'
-                    + str(args.batch_size) + '_gpu' + str(args.gpu_nums) + "_" + str(args.train_type) + '_adam_ohem/')
+                    + str(args.batch_size) + '_gpu' + str(args.gpu_nums) + "_" + str(args.train_type) + '_adam_ohem_E600_sk12_4_EAC/')
 
     if not os.path.exists(args.savedir):
         os.makedirs(args.savedir)
@@ -153,7 +153,7 @@ def train_model(args):
         # validation
         if (epoch+1) % 25 == 0 or epoch == (args.max_epochs - 1):
             epoches.append(epoch)
-            mIOU_val, per_class_iu = eval(args, valLoader, model)
+            mIOU_val, per_class_iu = eval_one_model(args, valLoader, model)
             mIOU_val_list.append(mIOU_val)
             # record train information
             logger.write("\n%d\t\t%.4f\t\t%.4f\t\t%.7f" % (epoch+1, lossTr, mIOU_val, lr))
@@ -175,7 +175,7 @@ def train_model(args):
         state = {"epoch": epoch + 1, "model": model.state_dict()}
 
         # if epoch >= args.max_epochs - 50:
-        if epoch+1 >= 300:
+        if epoch+1 >= args.max_epochs - 100:
             torch.save(state, model_file_name)
         elif not (epoch+1) % 25:
             torch.save(state, model_file_name)
@@ -212,7 +212,7 @@ def train_model(args):
 if __name__ == '__main__':
     start = timeit.default_timer()
     parser = ArgumentParser()
-    parser.add_argument('--model', default="FCN-ResNet-18-C64",
+    parser.add_argument('--model', default="FCN-SKNet",
                         help="FCN-ResNet-18-C64")
     parser.add_argument('--dataset', default="cityscapes", help="dataset: cityscapes or camvid")
     parser.add_argument('--train_type', type=str, default="train",
@@ -234,9 +234,9 @@ if __name__ == '__main__':
     parser.add_argument('--logFile', default="log.txt", help="storing the training and validation logs")
     parser.add_argument('--cuda', type=bool, default=True, help="running on CPU or GPU")
     parser.add_argument('--gpus', type=str, default="0", help="default GPU devices (0,1)")
-
+    parser.add_argument('--save', action='store_true', default=False, help="Save the predicted image")
     parser.add_argument('--reload', type=str,
-                        # default="checkpoint/cityscapes/EACNet_ResNet-18-c32/bs8_gpu1_train_adam_ohem/model_370.pth",
+                        default="checkpoint/cityscapes/FCN-SKNet/bs16_gpu1_train_adam_ohem_E600_sk12_4/model_556.pth",
                         help="use the file to load the checkpoint for evaluating or testing ")
     args = parser.parse_args()
 

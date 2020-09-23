@@ -8,15 +8,16 @@ from torchvision.models.resnet import model_urls
 
 
 class FCN_ResNet_18(nn.Module):
-    def __init__(self, num_classes=19, encoder_only=False, block_channel=64):
+    def __init__(self, num_classes=19, encoder_only=False, block_channel=64, use3x3=False):
         super(FCN_ResNet_18, self).__init__()
         backbone = ResNet18(pretrained=False, block_channel=block_channel)
         self.conv1 = backbone.conv1
-        # self.conv1 = nn.Sequential(
-        #     nn.Conv2d(3,  16, kernel_size=3, stride=1, padding=1, bias=False),
-        #     nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1, bias=False),
-        #     nn.Conv2d(32, 32, kernel_size=3, stride=2, padding=1, bias=False),
-        # )
+        if use3x3:
+            self.conv1 = nn.Sequential(
+                nn.Conv2d(3,  block_channel//2, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.Conv2d(block_channel//2, block_channel, kernel_size=3, stride=2, padding=1, bias=False),
+                nn.Conv2d(block_channel, block_channel, kernel_size=3, stride=1, padding=1, bias=False),
+            )
         self.bn1 = backbone.bn1
         self.relu1 = backbone.relu
         self.layer1 = backbone.layer1

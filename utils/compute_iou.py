@@ -1,104 +1,51 @@
+import time
+import numpy as np
 import torch
+from torch.autograd import Variable
+
+from utils.metrics import ComputeIoU
+from utils.tools.save_predict import *
 
 
-class Relabel:
+def eval_one_model(args, test_loader, model):
+    """
+    args:
+      test_loader: loaded for test dataset
+      model: model
+    return: class IoU and mean IoU
+    """
+    # evaluation or test mode
+    model.eval()
+    total_batches = len(test_loader)
+    iouEvalVal = ComputeIoU(args.classes+1)  # cityscapes
+    # iouEvalVal = iouEval(args.classes+1, ignoreIndex=11)    #camvid
+    data_list = []
+    for i, (input, label, size, name) in enumerate(test_loader):
+        with torch.no_grad():
+            if args.cuda:
+                input_var = Variable(input).cuda()
+            else:
+                input_var = Variable(input)
+            start_time = time.time()
 
-    def __init__(self, olabel, nlabel):
-        self.olabel = olabel
-        self.nlabel = nlabel
+            output = model(input_var)
 
-    def __call__(self, tensor):
-        assert (isinstance(tensor, torch.LongTensor) or isinstance(tensor, torch.ByteTensor)), 'tensor needs to be LongTensor'
-        tensor[tensor == self.olabel] = self.nlabel
-        return tensor
+            torch.cuda.synchronize()
+            time_taken = time.time() - start_time
+        print('[%d/%d]  time: %.2f' % (i + 1, total_batches, time_taken))
+        # print(output.max(1)[1].unsqueeze(1).dtype)
+        # print(label.dtype)
+        iouEvalVal.addBatch(output.max(1)[1].unsqueeze(1).data, label.unsqueeze(1))
+        output = output.cpu().data[0].numpy()
+        gt = np.asarray(label[0].numpy(), dtype=np.uint8)
+        output = output.transpose(1, 2, 0)
+        output = np.asarray(np.argmax(output, axis=2), dtype=np.uint8)
+        # data_list.append([gt.flatten(), output.flatten()])
 
+        # save the predicted image
+        if args.save:
+            save_predict(output, gt, name[0], args.dataset, args.save_seg_dir,
+                         output_grey=False, output_color=True, gt_color=False)
 
-class ComputeIoU:
-
-    def __init__(self, nClasses, ignoreIndex=19):
-        self.nClasses = nClasses
-        self.ignoreIndex = ignoreIndex if nClasses > ignoreIndex else -1 #if ignoreIndex is larger than nClasses, consider no ignoreIndex
-        self.reset()
-
-    def reset(self):
-        classes = self.nClasses if self.ignoreIndex == -1 else self.nClasses-1
-        self.tp = torch.zeros(classes).double()
-        self.fp = torch.zeros(classes).double()
-        self.fn = torch.zeros(classes).double()        
-
-    def addBatch(self, x, y):   #x=preds, y=targets
-        #sizes should be "batch_size x nClasses x H x W"
-        y = Relabel(255, 19)(y)
-
-        if x.is_cuda or y.is_cuda:
-            x = x.cuda()
-            y = y.cuda()
-
-        #if size is "batch_size x 1 x H x W" scatter to onehot
-        if x.size(1) == 1:
-            x_onehot = torch.zeros(x.size(0), self.nClasses, x.size(2), x.size(3))  
-            if x.is_cuda:
-                x_onehot = x_onehot.cuda()
-            x_onehot.scatter_(1, x, 1).float()
-        else:
-            x_onehot = x.float()
-
-        if y.size(1) == 1:
-            y_onehot = torch.zeros(y.size(0), self.nClasses, y.size(2), y.size(3))
-            if y.is_cuda:
-                y_onehot = y_onehot.cuda()
-            y_onehot.scatter_(1, y, 1).float()
-        else:
-            y_onehot = y.float()
-
-        if self.ignoreIndex != -1:
-            ignores = y_onehot[:, self.ignoreIndex].unsqueeze(1)
-            x_onehot = x_onehot[:, :self.ignoreIndex]
-            y_onehot = y_onehot[:, :self.ignoreIndex]
-        else:
-            ignores = 0
-
-        tpmult = x_onehot * y_onehot    #times prediction and gt coincide is 1
-        tp = torch.sum(torch.sum(torch.sum(tpmult, dim=0, keepdim=True), dim=2, keepdim=True), dim=3, keepdim=True).squeeze()
-        fpmult = x_onehot * (1-y_onehot-ignores) #times prediction says its that class and gt says its not (subtracting cases when its ignore label!)
-        fp = torch.sum(torch.sum(torch.sum(fpmult, dim=0, keepdim=True), dim=2, keepdim=True), dim=3, keepdim=True).squeeze()
-        fnmult = (1-x_onehot) * y_onehot  #times prediction says its not that class and gt says it is
-        fn = torch.sum(torch.sum(torch.sum(fnmult, dim=0, keepdim=True), dim=2, keepdim=True), dim=3, keepdim=True).squeeze() 
-
-        self.tp += tp.double().cpu()
-        self.fp += fp.double().cpu()
-        self.fn += fn.double().cpu()
-
-    def getIoU(self):
-        num = self.tp
-        den = self.tp + self.fp + self.fn + 1e-15
-        iou = num / den
-        return torch.mean(iou), iou     #returns "iou mean", "iou per class"
-
-# Class for colors
-class colors:
-    RED       = '\033[31;1m'
-    GREEN     = '\033[32;1m'
-    YELLOW    = '\033[33;1m'
-    BLUE      = '\033[34;1m'
-    MAGENTA   = '\033[35;1m'
-    CYAN      = '\033[36;1m'
-    BOLD      = '\033[1m'
-    UNDERLINE = '\033[4m'
-    ENDC      = '\033[0m'
-
-# Colored value output if colorized flag is activated.
-def getColorEntry(val):
-    if not isinstance(val, float):
-        return colors.ENDC
-    if (val < .20):
-        return colors.RED
-    elif (val < .40):
-        return colors.YELLOW
-    elif (val < .60):
-        return colors.BLUE
-    elif (val < .80):
-        return colors.CYAN
-    else:
-        return colors.GREEN
-
+    meanIoU, per_class_iu = iouEvalVal.getIoU()
+    return meanIoU, per_class_iu

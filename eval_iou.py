@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 from builders.model_builder import build_model
 from builders.dataset_builder import build_dataset_test
 from utils.tools.save_predict import save_predict
-from utils.eval_iou import eval
+from utils.compute_iou import eval_one_model
 
 
 def eval_model(args):
@@ -83,7 +83,7 @@ def eval_model(args):
                     model.load_state_dict(checkpoint['model'])
                     print("=====> beginning test the " + basename)
                     print("validation set length: ", len(testLoader))
-                    mIOU_val_0, per_class_iu_0 = eval(args, testLoader, model)
+                    mIOU_val_0, per_class_iu_0 = eval_one_model(args, testLoader, model)
                     mIOU_val.append(mIOU_val_0)
                     per_class_iu.append(per_class_iu_0)
                     logger.write("%d\t%.4f\n" % (i, mIOU_val_0))
@@ -125,12 +125,12 @@ def eval_model(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--model', default="FCN-ResNet-18-C64", help="FCN-ResNet-18-C64")
+    parser.add_argument('--model', default="FCN-SKNet", help="FCN-ResNet-18-C32, FCN-SKNet")
     parser.add_argument('--dataset', default="cityscapes", help="dataset: cityscapes or camvid")
     parser.add_argument('--num_workers', type=int, default=1, help="the number of parallel threads")
     parser.add_argument('--batch_size', type=int, default=1,
                         help=" the batch_size is set to 1 when evaluating or testing")
-    parser.add_argument('--checkpoint', default="checkpoint/cityscapes/FCN-ResNet-18-C64/bs8_gpu1_train_adam_ohem/model_400.pth")
+    parser.add_argument('--checkpoint', default="checkpoint/cityscapes/FCN-SKNet/bs8_gpu1_train_adam_ohem_E600_sk12_4_EAC/model_400.pth")
     parser.add_argument('--eval_num', type=int, default=50)
     # parser.add_argument('--checkpoint', type=str,
     #                     default="./checkpoint/cityscapes/DABNet_cityscapes.pth",
