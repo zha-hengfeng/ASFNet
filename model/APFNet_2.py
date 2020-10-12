@@ -6,9 +6,9 @@ from .module.apf_att import APF_Moudle
 from .module.da_att import CAM_Module
 
 
-class APFNet(nn.Module):
+class APFNet_2(nn.Module):
     def __init__(self, num_classes=19, backbone='res18', encoder_only=True, block_channel=32, use3x3=False):
-        super(APFNet, self).__init__()
+        super(APFNet_2, self).__init__()
         if backbone == 'res18':
             backbone = ResNet18(pretrained=False, block_channel=block_channel)
         self.conv1 = backbone.conv1
@@ -29,16 +29,22 @@ class APFNet(nn.Module):
                                           nn.BatchNorm2d(2*block_channel),
                                           nn.ReLU(inplace=True)
                                           )
+        self.cam_4 = CAM_Module(in_dim=2*block_channel)
 
         self.avgpool = nn.AvgPool2d(3, stride=2, padding=1)
         self.conv_block_1 = nn.Sequential(nn.Conv2d(block_channel, 2 * block_channel, 3, 1, 1),
                                           nn.BatchNorm2d(2 * block_channel),
                                           nn.ReLU(inplace=True)
                                           )
+        self.cam_1 = CAM_Module(in_dim=2*block_channel)
+
+        self.cam_2 = CAM_Module(in_dim=2*block_channel)
+
+
         self.apf_m = APF_Moudle(in_channels=2*block_channel, out_channels=64, stride=1, M=3, r=16,
                                       L=num_classes)
         # self.classify = nn.Conv2d(64, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
-        self.classify_out = nn.Sequential(
+        self.classify = nn.Sequential(
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
@@ -63,13 +69,17 @@ class APFNet(nn.Module):
 
         block_4_out_up = self.conv_block_4(block_4_out)
         block_4_out_up = nn.functional.interpolate(block_4_out_up, block_2_out.size()[2:], mode='bilinear', align_corners=False)
+        block_4_out_up = self.cam_4(block_4_out_up)
         # output = self.sk_module([block_2_out, block_4_out_up])
 
         block_1_out_down = self.avgpool(block_1_out)
         block_1_out_down = self.conv_block_1(block_1_out_down)
+        block_1_out_down = self.cam_1(block_1_out_down)
+        block_2_out = self.cam_2(block_2_out)
+
         output = self.apf_m([block_1_out_down, block_2_out, block_4_out_up])
 
-        output = self.classify_out(output)
+        output = self.classify(output)
         if not self.encoder_only:
             output = self.eac_module(output)
         output = torch.nn.functional.interpolate(output, input.size()[2:], mode='bilinear', align_corners=False)
@@ -94,7 +104,7 @@ class ResNet(nn.Module):
         self.layer1 = self._make_layer(block, block_channel, layers[0], stride=2)
         self.layer2 = self._make_layer(block, 2*block_channel, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 4*block_channel, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 256, layers[3], stride=1)
+        self.layer4 = self._make_layer(block, 256, layers[3], stride=1, dilated=2)
         # self.avgpool = nn.AvgPool2d(7, stride=1)
         # self.fc = nn.Linear(512 * block.expansion, num_classes)
 
@@ -106,12 +116,12 @@ class ResNet(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def _make_layer(self, block, planes, blocks, stride=1):
+    def _make_layer(self, block, planes, blocks, stride=1, dilated=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
                 nn.Conv2d(self.inplanes, planes * block.expansion,
-                          kernel_size=1, stride=stride, bias=False),
+                          kernel_size=1, stride=stride, bias=False, dilation=dilated),
                 nn.BatchNorm2d(planes * block.expansion),
             )
 

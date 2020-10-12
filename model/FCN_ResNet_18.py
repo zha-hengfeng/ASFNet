@@ -8,7 +8,7 @@ from torchvision.models.resnet import model_urls
 
 
 class FCN_ResNet_18(nn.Module):
-    def __init__(self, num_classes=19, encoder_only=False, block_channel=64, use3x3=False):
+    def __init__(self, num_classes=19, encoder_only=False, block_channel=32, use3x3=False):
         super(FCN_ResNet_18, self).__init__()
         backbone = ResNet18(pretrained=False, block_channel=block_channel)
         self.conv1 = backbone.conv1
@@ -180,6 +180,15 @@ class ResNet(nn.Module):
 def ResNet18(pretrained=False, block_channel=64, **kwargs):
     # trained(bool): If True, returns a model pre - trained on ImageNet
     model = ResNet(BasicBlock, [2, 2, 2, 2], block_channel, **kwargs)
+    if pretrained:
+        # model.load_state_dict(model_zoo.load_url(model_urls['resnet18']))
+        model.load_state_dict(torch.load("model/model_zoo/resnet18-5c106cde.pth"))
+    return model
+
+
+def ResNet34(pretrained=False, block_channel=32, **kwargs):
+    # trained(bool): If True, returns a model pre - trained on ImageNet
+    model = ResNet(BasicBlock, [3, 4, 6, 3], block_channel, **kwargs)
     if pretrained:
         # model.load_state_dict(model_zoo.load_url(model_urls['resnet18']))
         model.load_state_dict(torch.load("model/model_zoo/resnet18-5c106cde.pth"))

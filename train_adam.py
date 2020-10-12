@@ -13,7 +13,7 @@ from builders.model_builder import build_model
 from builders.dataset_builder import build_dataset_train
 from utils.trainer import train
 from utils.compute_iou import eval_one_model
-from utils.tools.utils import setup_seed, init_weight, netParams
+from utils.tools.utils import *
 from utils.loss import CrossEntropyLoss2d, ProbOhemCrossEntropy2d
 
 
@@ -91,8 +91,8 @@ def train_model(args):
             print("single GPU for training")
             model = model.cuda()  # 1-card data parallel
 
-    args.savedir = (args.savedir + args.dataset + '/' + args.model + '/bs'
-                    + str(args.batch_size) + '_gpu' + str(args.gpu_nums) + "_" + str(args.train_type) + '_adam_ohem_E600_sk12_4_EAC/')
+    args.savedir = (args.savedir + args.dataset + '/' + args.model + '_sk1234/bs'
+                    + str(args.batch_size) + '_gpu' + str(args.gpu_nums) + "_" + str(args.train_type) + '_adam_ohem_e400_2/')
 
     if not os.path.exists(args.savedir):
         os.makedirs(args.savedir)
@@ -183,28 +183,8 @@ def train_model(args):
         # draw plots for visualization
         if (epoch+1) % 25 == 0 or epoch == (args.max_epochs - 1):
             # Plot the figures per 50 epochs
-            fig1, ax1 = plt.subplots(figsize=(11, 8))
-
-            ax1.plot(range(start_epoch, epoch + 1), lossTr_list)
-            ax1.set_title("Average training loss vs epochs")
-            ax1.set_xlabel("Epochs")
-            ax1.set_ylabel("Current loss")
-
-            plt.savefig(args.savedir + "loss_vs_epochs.png")
-
-            plt.clf()
-
-            fig2, ax2 = plt.subplots(figsize=(11, 8))
-
-            ax2.plot(epoches, mIOU_val_list, label="Val IoU")
-            ax2.set_title("Average IoU vs epochs")
-            ax2.set_xlabel("Epochs")
-            ax2.set_ylabel("Current IoU")
-            plt.legend(loc='lower right')
-
-            plt.savefig(args.savedir + "iou_vs_epochs.png")
-
-            plt.close('all')
+            draw_loss(start_epoch, epoch, lossTr_list, args.savedir)
+            draw_miou(epoches, mIOU_val_list, args.savedir)
 
     logger.close()
 
@@ -212,8 +192,8 @@ def train_model(args):
 if __name__ == '__main__':
     start = timeit.default_timer()
     parser = ArgumentParser()
-    parser.add_argument('--model', default="FCN-SKNet",
-                        help="FCN-ResNet-18-C64")
+    parser.add_argument('--model', default="APFNet_CAM_r34",
+                        help="FCN-ResNet-18-C64, FCN34-c32")
     parser.add_argument('--dataset', default="cityscapes", help="dataset: cityscapes or camvid")
     parser.add_argument('--train_type', type=str, default="train",
                         help="ontrain for training on train set, ontrainval for training on train+val set")
@@ -224,8 +204,8 @@ if __name__ == '__main__':
     parser.add_argument('--random_scale', type=bool, default=True, help="input image resize 0.5 to 2")
     parser.add_argument('--num_workers', type=int, default=4, help=" the number of parallel threads")
     # parser.add_argument('--lr', type=float, default=4.5e-2, help="initial learning rate")
-    parser.add_argument('--lr', type=float, default=5e-4, help="initial learning rate")
-    parser.add_argument('--batch_size', type=int, default=8, help="the batch size is set to 16 for 2 GPUs")
+    parser.add_argument('--lr', type=float, default=4e-5, help="initial learning rate")
+    parser.add_argument('--batch_size', type=int, default=16, help="the batch size is set to 16 for 2 GPUs")
     parser.add_argument('--savedir', default="./checkpoint/", help="directory to save the model snapshot")
     parser.add_argument('--resume', type=str, default="",
                         help="use this file to load last checkpoint for continuing training")
@@ -236,7 +216,7 @@ if __name__ == '__main__':
     parser.add_argument('--gpus', type=str, default="0", help="default GPU devices (0,1)")
     parser.add_argument('--save', action='store_true', default=False, help="Save the predicted image")
     parser.add_argument('--reload', type=str,
-                        default="checkpoint/cityscapes/FCN-SKNet/bs16_gpu1_train_adam_ohem_E600_sk12_4/model_556.pth",
+                        default="checkpoint/cityscapes/FCN34-c32/bs16_gpu1_train_adam_ohem_E400_sk124/model_600.pth",
                         help="use the file to load the checkpoint for evaluating or testing ")
     args = parser.parse_args()
 

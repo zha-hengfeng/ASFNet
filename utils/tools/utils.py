@@ -52,3 +52,28 @@ def netParams(model):
         total_paramters += p
 
     return total_paramters
+
+
+import matplotlib.pyplot as plt
+# visual
+def draw_loss(start_epoch, epoch, lossTr_list, savedir):
+    fig1, ax1 = plt.subplots(figsize=(11, 8))
+    ax1.plot(range(start_epoch, epoch + 1), lossTr_list)
+    ax1.set_title("Average training loss vs epochs")
+    ax1.set_xlabel("Epochs")
+    ax1.set_ylabel("Current loss")
+    plt.savefig(savedir + "loss_vs_epochs.png")
+    plt.clf()
+    plt.close('all')
+
+# visual
+def draw_miou(epoches, mIOU_val_list, savedir):
+    fig2, ax2 = plt.subplots(figsize=(11, 8))
+    ax2.plot(epoches, mIOU_val_list, label="Val IoU")
+    ax2.set_title("Average IoU vs epochs")
+    ax2.set_xlabel("Epochs")
+    ax2.set_ylabel("Current IoU")
+    plt.legend(loc='lower right')
+    plt.savefig(savedir + "iou_vs_epochs.png")
+    plt.clf()
+    plt.close('all')

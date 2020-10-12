@@ -6,16 +6,18 @@ from .module.apf_att import APF_Moudle
 from .module.da_att import CAM_Module
 
 
-class APFNet(nn.Module):
+class APFNet_CAM(nn.Module):
     def __init__(self, num_classes=19, backbone='res18', encoder_only=True, block_channel=32, use3x3=False):
-        super(APFNet, self).__init__()
+        super(APFNet_CAM, self).__init__()
         if backbone == 'res18':
             backbone = ResNet18(pretrained=False, block_channel=block_channel)
+        if backbone == 'res34':
+            backbone = ResNet34(pretrained=False, block_channel=block_channel)
         self.conv1 = backbone.conv1
         if use3x3:
             self.conv1 = nn.Sequential(
-                nn.Conv2d(3,  block_channel//2, kernel_size=3, stride=1, padding=1, bias=False),
-                nn.Conv2d(block_channel//2, block_channel, kernel_size=3, stride=2, padding=1, bias=False),
+                nn.Conv2d(3, block_channel // 2, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.Conv2d(block_channel // 2, block_channel, kernel_size=3, stride=2, padding=1, bias=False),
                 nn.Conv2d(block_channel, block_channel, kernel_size=3, stride=1, padding=1, bias=False),
             )
         self.bn1 = backbone.bn1
@@ -25,51 +27,65 @@ class APFNet(nn.Module):
         self.layer3 = backbone.layer3
         self.layer4 = backbone.layer4
 
-        self.conv_block_4 = nn.Sequential(nn.Conv2d(256, 2*block_channel, 3, 1, 1),
-                                          nn.BatchNorm2d(2*block_channel),
-                                          nn.ReLU(inplace=True)
-                                          )
+        self.cam_1 = CAM_Module(in_dim=2 * block_channel)
+        self.cam_2 = CAM_Module(in_dim=2 * block_channel)
+        self.cam_3 = CAM_Module(in_dim=2 * block_channel)
+        self.cam_4 = CAM_Module(in_dim=2 * block_channel)
 
-        self.avgpool = nn.AvgPool2d(3, stride=2, padding=1)
+        self.avgpool_1 = nn.AvgPool2d(3, stride=2, padding=1)
         self.conv_block_1 = nn.Sequential(nn.Conv2d(block_channel, 2 * block_channel, 3, 1, 1),
                                           nn.BatchNorm2d(2 * block_channel),
                                           nn.ReLU(inplace=True)
                                           )
-        self.apf_m = APF_Moudle(in_channels=2*block_channel, out_channels=64, stride=1, M=3, r=16,
-                                      L=num_classes)
+        self.conv_block_3 = nn.Sequential(nn.Conv2d(4 * block_channel, 2 * block_channel, 3, 1, 1),
+                                          nn.BatchNorm2d(2 * block_channel),
+                                          nn.ReLU(inplace=True)
+                                          )
+        self.conv_block_4 = nn.Sequential(nn.Conv2d(256, 2 * block_channel, 3, 1, 1),
+                                          nn.BatchNorm2d(2 * block_channel),
+                                          nn.ReLU(inplace=True)
+                                          )
+        self.apf_m_pre = APF_Moudle(in_channels=2 * block_channel, out_channels=64, stride=1, M=2, r=16,
+                                    L=num_classes)
+        self.apf_m = APF_Moudle(in_channels=2 * block_channel, out_channels=64, stride=1, M=3, r=16,
+                                L=num_classes)
         # self.classify = nn.Conv2d(64, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
-        self.classify_out = nn.Sequential(
+        self.classify_final = nn.Sequential(
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Conv2d(64, num_classes, kernel_size=3, stride=1, padding=1, bias=False),
         )
+
         self.encoder_only = encoder_only
         # if not encoder_only:
         #     self.eac_module = EAC_Module(num_classes, num_classes)
 
-
     def forward(self, input):
-        conv_first = self.conv1(input)          # block_c
+        conv_first = self.conv1(input)  # block_c
         conv_first = self.bn1(conv_first)
         conv_first = self.relu1(conv_first)
-        block_1_out = self.layer1(conv_first)   # block_c
+        block_1_out = self.layer1(conv_first)  # block_c
         block_2_out = self.layer2(block_1_out)  # 2 * block_c
         block_3_out = self.layer3(block_2_out)  # 4 * block_c
         block_4_out = self.layer4(block_3_out)  # 256
-        # output_3 = self.classify_3(block_3_out)
-        # output_4 = self.classify_4(block_4_out)
-        # output = self.sk_module([output_3, output_4])
 
-        block_4_out_up = self.conv_block_4(block_4_out)
-        block_4_out_up = nn.functional.interpolate(block_4_out_up, block_2_out.size()[2:], mode='bilinear', align_corners=False)
-        # output = self.sk_module([block_2_out, block_4_out_up])
+        b3_out_conv = self.conv_block_3(block_3_out)
+        b3_out_cam = self.cam_3(b3_out_conv)
+        b4_out_conv = self.conv_block_4(block_4_out)
+        b4_out_cam = self.cam_4(b4_out_conv)
+        block_34_out = self.apf_m_pre([b3_out_cam, b4_out_cam])
 
-        block_1_out_down = self.avgpool(block_1_out)
-        block_1_out_down = self.conv_block_1(block_1_out_down)
-        output = self.apf_m([block_1_out_down, block_2_out, block_4_out_up])
+        block_34_out_up = nn.functional.interpolate(block_34_out, block_2_out.size()[2:], mode='bilinear',
+                                                    align_corners=False)
+        b1_out_down = self.avgpool_1(block_1_out)
+        b1_out_down = self.conv_block_1(b1_out_down)
+        b1_out_cam = self.cam_1(b1_out_down)
+        b2_out_cam = self.cam_2(block_2_out)
 
-        output = self.classify_out(output)
+        output = self.apf_m([b1_out_cam, b2_out_cam, block_34_out_up])
+
+        output = self.classify_final(output)
         if not self.encoder_only:
             output = self.eac_module(output)
         output = torch.nn.functional.interpolate(output, input.size()[2:], mode='bilinear', align_corners=False)
@@ -81,7 +97,7 @@ class ResNet(nn.Module):
     def __init__(self, block, layers, block_channel, num_classes=1000):
         self.inplanes = block_channel
         super(ResNet, self).__init__()
-        self.conv1 = nn.Conv2d(3, block_channel, kernel_size=7, stride=2, padding=3, bias=False)   # 第一次下采样
+        self.conv1 = nn.Conv2d(3, block_channel, kernel_size=7, stride=2, padding=3, bias=False)  # 第一次下采样
         # add by @zhA
         # self.conv1 = nn.Sequential(
         #     nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=3, bias=False),
@@ -90,11 +106,11 @@ class ResNet(nn.Module):
         # )
         self.bn1 = nn.BatchNorm2d(block_channel)
         self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)     # 第二次下采样
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)  # 第二次下采样
         self.layer1 = self._make_layer(block, block_channel, layers[0], stride=2)
-        self.layer2 = self._make_layer(block, 2*block_channel, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 4*block_channel, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 256, layers[3], stride=1)
+        self.layer2 = self._make_layer(block, 2 * block_channel, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 4 * block_channel, layers[2], stride=2)
+        self.layer4 = self._make_layer(block, 256, layers[3], stride=1, dilated=2)
         # self.avgpool = nn.AvgPool2d(7, stride=1)
         # self.fc = nn.Linear(512 * block.expansion, num_classes)
 
@@ -106,12 +122,12 @@ class ResNet(nn.Module):
                 m.weight.data.fill_(1)
                 m.bias.data.zero_()
 
-    def _make_layer(self, block, planes, blocks, stride=1):
+    def _make_layer(self, block, planes, blocks, stride=1, dilated=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
                 nn.Conv2d(self.inplanes, planes * block.expansion,
-                          kernel_size=1, stride=stride, bias=False),
+                          kernel_size=1, stride=stride, bias=False, dilation=dilated),
                 nn.BatchNorm2d(planes * block.expansion),
             )
 
@@ -180,6 +196,15 @@ class BasicBlock(nn.Module):
 def ResNet18(pretrained=False, block_channel=64, **kwargs):
     # trained(bool): If True, returns a model pre - trained on ImageNet
     model = ResNet(BasicBlock, [2, 2, 2, 2], block_channel, **kwargs)
+    if pretrained:
+        # model.load_state_dict(model_zoo.load_url(model_urls['resnet18']))
+        model.load_state_dict(torch.load("model/model_zoo/resnet18-5c106cde.pth"))
+    return model
+
+
+def ResNet34(pretrained=False, block_channel=32, **kwargs):
+    # trained(bool): If True, returns a model pre - trained on ImageNet
+    model = ResNet(BasicBlock, [3, 4, 6, 3], block_channel, **kwargs)
     if pretrained:
         # model.load_state_dict(model_zoo.load_url(model_urls['resnet18']))
         model.load_state_dict(torch.load("model/model_zoo/resnet18-5c106cde.pth"))

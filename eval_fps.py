@@ -46,12 +46,12 @@ if __name__ == '__main__':
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--classes', type=int, default=19)
     parser.add_argument('--iter', type=int, default=1000)
-    parser.add_argument('--model', type=str, default="FCN-SKNet", help="[FCN-ResNet-18-C32-3x3]"
-                                                                                   "FCN-ResNet-18-C32")
+    parser.add_argument('--model', type=str, default="APFNet_CAM", help="[FCN-ResNet-18-C32-3x3, FCN34-c32]"
+                                                                       "APFNet_CAM_r34, FCN-ResNet-18-C32")
     parser.add_argument("--gpus", type=str, default="0", help="gpu ids (default: 0)")
     args = parser.parse_args()
 
     h, w = map(int, args.size.split(','))
     model = build_model(args.model, num_classes=args.classes)
-    # print(model)
+    print(model)
     compute_speed(model, (args.batch_size, args.num_channels, h, w), int(args.gpus), iteration=args.iter)

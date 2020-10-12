@@ -10,6 +10,9 @@ import importlib
 
 from model.FCN_ResNet_18 import FCN_ResNet_18
 from model.FCN_SKNet import FCN_SKNet
+from model.APFNet import APFNet
+from model.APFNet_2 import APFNet_2
+from model.APF_CAM import APFNet_CAM
 
 
 def build_model(model_name, num_classes):
@@ -45,3 +48,22 @@ def build_model(model_name, num_classes):
     if model_name == 'FCN-Res18-C64-SK':
         print("=====> Build FCN_SKNet !")
         return FCN_SKNet(num_classes=num_classes, block_channel=64)
+
+    if model_name == 'APFNet':
+        print("=====> Build APFNet !")
+        return APFNet(num_classes=num_classes, block_channel=32)
+
+    if model_name == 'APFNet_2':
+        print("=====> Build APFNet !")
+        return APFNet_2(num_classes=num_classes, block_channel=32)
+
+    if model_name == 'APFNet_CAM':
+        return APFNet_CAM(num_classes=num_classes, block_channel=32)
+
+
+    if model_name == 'FCN34-c32':
+        from model.FCN_ResNet34 import FCN_ResNet34
+        return FCN_ResNet34(num_classes=num_classes, block_channel=32)
+
+    if model_name == 'APFNet_CAM_r34':
+        return APFNet_CAM(num_classes=num_classes, block_channel=32, backbone='res34')
