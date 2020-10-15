@@ -62,7 +62,7 @@ def eval_model(args):
 
         print("=====> beginning validation")
         print("validation set length: ", len(testLoader))
-        mIOU_val, per_class_iu = eval(args, testLoader, model)
+        mIOU_val, per_class_iu = eval_one_model(args, testLoader, model)
         print(mIOU_val)
         print(per_class_iu)
 
@@ -125,12 +125,12 @@ def eval_model(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--model', default="APFNet_CAM_r34", help="FCN-ResNet-18-C32, FCN-SKNet")
+    parser.add_argument('--model', default="apfnet_cam_r34_numch", help="FCN-ResNet-18-C32, FCN-SKNet")
     parser.add_argument('--dataset', default="cityscapes", help="dataset: cityscapes or camvid")
     parser.add_argument('--num_workers', type=int, default=1, help="the number of parallel threads")
     parser.add_argument('--batch_size', type=int, default=1,
                         help=" the batch_size is set to 1 when evaluating or testing")
-    parser.add_argument('--checkpoint', default="checkpoint/cityscapes/APFNet_CAM_r34_sk1234/bs16_gpu1_train_adam_ohem_e400/model_400.pth")
+    parser.add_argument('--checkpoint', default="checkpoint/cityscapes/apfnet_cam_r34_numch_skfull/bs16_gpu1_train_adam_ohem_e400_aux/model_400.pth")
     parser.add_argument('--eval_num', type=int, default=50)
     # parser.add_argument('--checkpoint', type=str,
     #                     default="./checkpoint/cityscapes/DABNet_cityscapes.pth",

@@ -41,12 +41,13 @@ class FocalLoss2d(nn.Module):
 
 class ProbOhemCrossEntropy2d(nn.Module):
     def __init__(self, ignore_label, reduction='mean', thresh=0.6, min_kept=256,
-                 down_ratio=1, use_weight=False):
+                 down_ratio=1, use_weight=False, aux=False):
         super(ProbOhemCrossEntropy2d, self).__init__()
         self.ignore_label = ignore_label
         self.thresh = float(thresh)
         self.min_kept = int(min_kept)
         self.down_ratio = down_ratio
+        self.aux = aux
         if use_weight:
             weight = torch.FloatTensor(
                 [0.8373, 0.918, 0.866, 1.0345, 1.0166, 0.9969, 0.9754, 1.0489,
@@ -55,11 +56,22 @@ class ProbOhemCrossEntropy2d(nn.Module):
             self.criterion = torch.nn.CrossEntropyLoss(reduction=reduction,
                                                        weight=weight,
                                                        ignore_index=ignore_label)
+            if aux:
+                self.criterion_bone = torch.nn.CrossEntropyLoss(reduction=reduction,
+                                                           weight=weight,
+                                                           ignore_index=ignore_label)
+                self.criterion_34 = torch.nn.CrossEntropyLoss(reduction=reduction,
+                                                           weight=weight,
+                                                           ignore_index=ignore_label)
         else:
             self.criterion = torch.nn.CrossEntropyLoss(reduction=reduction,
                                                        ignore_index=ignore_label)
 
-    def forward(self, pred, target):
+    def forward(self, preds, target):
+        if self.aux:
+            pred, bone = preds
+        else:
+            pred = preds[0]
         b, c, h, w = pred.size()
         target = target.view(-1)
         valid_mask = target.ne(self.ignore_label)
@@ -91,5 +103,10 @@ class ProbOhemCrossEntropy2d(nn.Module):
         #target = target.masked_fill_(1 - valid_mask, self.ignore_label)
         target = target.masked_fill_(~ valid_mask, self.ignore_label)
         target = target.view(b, h, w)
+        loss = self.criterion(pred, target)
+        if self.aux:
+            # loss_34 = self.criterion_34(b34, target)
+            loss_bone = self.criterion_bone(bone, target)
+            loss = loss + 0.3 * loss_bone
 
-        return self.criterion(pred, target)
+        return loss

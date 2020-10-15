@@ -74,7 +74,7 @@ def train_model(args):
     elif args.dataset == 'cityscapes':
         min_kept = int(args.batch_size // len(args.gpus) * h * w // 16)
         criteria = ProbOhemCrossEntropy2d(use_weight=True, ignore_label=255,
-                                          thresh=0.7, min_kept=min_kept)
+                                          thresh=0.7, min_kept=min_kept, aux=args.aux)
         # criteria = CrossEntropyLoss2d(weight=weight, ignore_label=255)
     else:
         raise NotImplementedError(
@@ -91,8 +91,8 @@ def train_model(args):
             print("single GPU for training")
             model = model.cuda()  # 1-card data parallel
 
-    args.savedir = (args.savedir + args.dataset + '/' + args.model + '_sk1234/bs'
-                    + str(args.batch_size) + '_gpu' + str(args.gpu_nums) + "_" + str(args.train_type) + '_adam_ohem_e400_2/')
+    args.savedir = (args.savedir + args.dataset + '/' + args.model + '/bs'
+                    + str(args.batch_size) + '_gpu' + str(args.gpu_nums) + "_" + str(args.train_type) + '_adam_ohem_e600/')
 
     if not os.path.exists(args.savedir):
         os.makedirs(args.savedir)
@@ -192,7 +192,7 @@ def train_model(args):
 if __name__ == '__main__':
     start = timeit.default_timer()
     parser = ArgumentParser()
-    parser.add_argument('--model', default="APFNet_CAM_r34",
+    parser.add_argument('--model', default="FCN-ResNet-18-C64",
                         help="FCN-ResNet-18-C64, FCN34-c32")
     parser.add_argument('--dataset', default="cityscapes", help="dataset: cityscapes or camvid")
     parser.add_argument('--train_type', type=str, default="train",
@@ -204,7 +204,7 @@ if __name__ == '__main__':
     parser.add_argument('--random_scale', type=bool, default=True, help="input image resize 0.5 to 2")
     parser.add_argument('--num_workers', type=int, default=4, help=" the number of parallel threads")
     # parser.add_argument('--lr', type=float, default=4.5e-2, help="initial learning rate")
-    parser.add_argument('--lr', type=float, default=4e-5, help="initial learning rate")
+    parser.add_argument('--lr', type=float, default=8e-5, help="initial learning rate")
     parser.add_argument('--batch_size', type=int, default=16, help="the batch size is set to 16 for 2 GPUs")
     parser.add_argument('--savedir', default="./checkpoint/", help="directory to save the model snapshot")
     parser.add_argument('--resume', type=str, default="",
@@ -216,8 +216,9 @@ if __name__ == '__main__':
     parser.add_argument('--gpus', type=str, default="0", help="default GPU devices (0,1)")
     parser.add_argument('--save', action='store_true', default=False, help="Save the predicted image")
     parser.add_argument('--reload', type=str,
-                        default="checkpoint/cityscapes/FCN34-c32/bs16_gpu1_train_adam_ohem_E400_sk124/model_600.pth",
+                        default="checkpoint/cityscapes/FCN34-c32/bs16_gpu1_train_adam_ohem_e600/model_600.pth",
                         help="use the file to load the checkpoint for evaluating or testing ")
+    parser.add_argument('--aux', type=bool, default=True)
     args = parser.parse_args()
 
     if args.dataset == 'cityscapes':

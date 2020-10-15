@@ -30,6 +30,8 @@ def eval_one_model(args, test_loader, model):
 
             output = model(input_var)
 
+            output = output[0]
+
             torch.cuda.synchronize()
             time_taken = time.time() - start_time
         print('[%d/%d]  time: %.2f' % (i + 1, total_batches, time_taken))

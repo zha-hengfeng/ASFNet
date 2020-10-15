@@ -34,8 +34,7 @@ def train(args, train_loader, model, criterion, optimizer, epoch):
         images, labels, _, _ = batch
         images = Variable(images).cuda()
         labels = Variable(labels.long()).cuda()
-        #output = model(images)
-        output = model(images)    # train ERFNet encoder
+        output = model(images)
         loss = criterion(output, labels)
 
         optimizer.zero_grad()  # set the grad to zero
