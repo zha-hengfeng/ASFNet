@@ -192,19 +192,19 @@ def train_model(args):
 if __name__ == '__main__':
     start = timeit.default_timer()
     parser = ArgumentParser()
-    parser.add_argument('--model', default="FCN-ResNet-18-C64",
+    parser.add_argument('--model', default="FCN18-c64",
                         help="FCN-ResNet-18-C64, FCN34-c32")
     parser.add_argument('--dataset', default="cityscapes", help="dataset: cityscapes or camvid")
     parser.add_argument('--train_type', type=str, default="train",
                         help="ontrain for training on train set, ontrainval for training on train+val set")
-    parser.add_argument('--max_epochs', type=int, default=400,
+    parser.add_argument('--max_epochs', type=int, default=600,
                         help="the number of epochs: 300 for train set, 350 for train+val set")
     parser.add_argument('--input_size', type=str, default="512,1024", help="input size of model")
     parser.add_argument('--random_mirror', type=bool, default=True, help="input image random mirror")
     parser.add_argument('--random_scale', type=bool, default=True, help="input image resize 0.5 to 2")
     parser.add_argument('--num_workers', type=int, default=4, help=" the number of parallel threads")
     # parser.add_argument('--lr', type=float, default=4.5e-2, help="initial learning rate")
-    parser.add_argument('--lr', type=float, default=8e-5, help="initial learning rate")
+    parser.add_argument('--lr', type=float, default=5e-4, help="initial learning rate")
     parser.add_argument('--batch_size', type=int, default=16, help="the batch size is set to 16 for 2 GPUs")
     parser.add_argument('--savedir', default="./checkpoint/", help="directory to save the model snapshot")
     parser.add_argument('--resume', type=str, default="",
@@ -216,7 +216,7 @@ if __name__ == '__main__':
     parser.add_argument('--gpus', type=str, default="0", help="default GPU devices (0,1)")
     parser.add_argument('--save', action='store_true', default=False, help="Save the predicted image")
     parser.add_argument('--reload', type=str,
-                        default="checkpoint/cityscapes/FCN34-c32/bs16_gpu1_train_adam_ohem_e600/model_600.pth",
+                        # default="checkpoint/cityscapes/FCN34-c32/bs16_gpu1_train_adam_ohem_e600/model_600.pth",
                         help="use the file to load the checkpoint for evaluating or testing ")
     parser.add_argument('--aux', type=bool, default=True)
     args = parser.parse_args()

@@ -68,10 +68,8 @@ class ProbOhemCrossEntropy2d(nn.Module):
                                                        ignore_index=ignore_label)
 
     def forward(self, preds, target):
-        if self.aux:
-            pred, bone = preds
-        else:
-            pred = preds[0]
+
+        pred = preds[0]
         b, c, h, w = pred.size()
         target = target.view(-1)
         valid_mask = target.ne(self.ignore_label)
@@ -104,7 +102,9 @@ class ProbOhemCrossEntropy2d(nn.Module):
         target = target.masked_fill_(~ valid_mask, self.ignore_label)
         target = target.view(b, h, w)
         loss = self.criterion(pred, target)
-        if self.aux:
+
+        if self.aux and len(preds) > 1:
+            pred, bone = preds
             # loss_34 = self.criterion_34(b34, target)
             loss_bone = self.criterion_bone(bone, target)
             loss = loss + 0.3 * loss_bone

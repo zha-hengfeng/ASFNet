@@ -2,16 +2,16 @@ import math
 import torch
 import torch.nn as nn
 from model.module.eac_att import EAC_Module
-from model.ResNet import ResNet34
+from model.ResNet import *
 
 
 class FCN_ResNet(nn.Module):
-    def __init__(self, num_classes=19, encoder_only=True, bockbone="res34", block_channel=32, use3x3=False):
+    def __init__(self, num_classes=19, encoder_only=True, backbone="res34", block_channel=32, use3x3=False):
         super(FCN_ResNet, self).__init__()
         # build backbone
-        if bockbone == 'res18':
-            backbone = ResNet34(pretrained=False, block_channel=block_channel)
-        if bockbone == 'res34':
+        if backbone == 'res18':
+            backbone = ResNet18(pretrained=False, block_channel=block_channel)
+        if backbone == 'res34':
             backbone = ResNet34(pretrained=False, block_channel=block_channel)
 
         self.conv1 = backbone.conv1

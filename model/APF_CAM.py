@@ -49,7 +49,7 @@ class APFNet_CAM(nn.Module):
                                           )
         self.apf_m_pre = APF_Moudle(in_channels=2 * block_channel, out_channels=64, stride=1, M=2, r=16,
                                     L=num_classes)
-        self.apf_m = APF_Moudle(in_channels=2 * block_channel, out_channels=64, stride=1, M=4, r=16,
+        self.apf_m = APF_Moudle(in_channels=2 * block_channel, out_channels=64, stride=1, M=3, r=16,
                                 L=num_classes)
         # self.classify = nn.Conv2d(64, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
         self.classify_backbone = Seg_Head(in_channel=256, num_classes=num_classes)
@@ -92,7 +92,7 @@ class APFNet_CAM(nn.Module):
         b1_out_cam = self.cam_1(b1_out_down)
         b2_out_cam = self.cam_2(block_2_out)
 
-        output = self.apf_m([b1_out_cam, b2_out_cam, block_3_out_up, block_4_out_up])
+        output = self.apf_m([b1_out_cam, b2_out_cam, block_4_out_up])
 
         output = self.classify_final(output)
         if not self.encoder_only:
