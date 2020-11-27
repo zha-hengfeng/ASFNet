@@ -76,4 +76,4 @@ class APFNet(nn.Module):
         if not self.encoder_only:
             output = self.eac_module(output)
         output = torch.nn.functional.interpolate(output, input.size()[2:], mode='bilinear', align_corners=False)
-        return output
+        return [output]

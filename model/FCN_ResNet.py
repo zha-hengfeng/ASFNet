@@ -17,9 +17,9 @@ class FCN_ResNet(nn.Module):
         self.conv1 = backbone.conv1
         if use3x3:
             self.conv1 = nn.Sequential(
-                nn.Conv2d(3,  block_channel//2, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.Conv2d(3,  block_channel//2, kernel_size=5, stride=1, padding=1, bias=False),
                 nn.Conv2d(block_channel//2, block_channel, kernel_size=3, stride=2, padding=1, bias=False),
-                nn.Conv2d(block_channel, block_channel, kernel_size=3, stride=1, padding=1, bias=False),
+                # nn.Conv2d(block_channel, block_channel, kernel_size=3, stride=1, padding=1, bias=False),
             )
         self.bn1 = backbone.bn1
         self.relu1 = backbone.relu

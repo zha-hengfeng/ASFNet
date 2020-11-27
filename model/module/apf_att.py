@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from functools import reduce
 
+
 class APF_Moudle(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1, M=2, r=16, L=32):
         super(APF_Moudle, self).__init__()
