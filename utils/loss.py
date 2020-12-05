@@ -57,12 +57,15 @@ class ProbOhemCrossEntropy2d(nn.Module):
                                                        weight=weight,
                                                        ignore_index=ignore_label)
             if aux:
-                self.criterion_bone = torch.nn.CrossEntropyLoss(reduction=reduction,
+                self.criterion_2 = torch.nn.CrossEntropyLoss(reduction=reduction,
                                                            weight=weight,
                                                            ignore_index=ignore_label)
-                self.criterion_34 = torch.nn.CrossEntropyLoss(reduction=reduction,
+                self.criterion_3 = torch.nn.CrossEntropyLoss(reduction=reduction,
                                                            weight=weight,
                                                            ignore_index=ignore_label)
+                self.criterion_4 = torch.nn.CrossEntropyLoss(reduction=reduction,
+                                                             weight=weight,
+                                                             ignore_index=ignore_label)
         else:
             self.criterion = torch.nn.CrossEntropyLoss(reduction=reduction,
                                                        ignore_index=ignore_label)
@@ -104,9 +107,12 @@ class ProbOhemCrossEntropy2d(nn.Module):
         loss = self.criterion(pred, target)
 
         if self.aux and len(preds) > 1:
-            pred, bone = preds
+            pred, out_2, out_3, out_4 = preds
             # loss_34 = self.criterion_34(b34, target)
-            loss_bone = self.criterion_bone(bone, target)
-            loss = loss + 0.3 * loss_bone
+            loss_2 = self.criterion_2(out_2, target)
+            loss_3 = self.criterion_3(out_2, target)
+            loss_4 = self.criterion_4(out_2, target)
+
+            loss = loss + 0.3*loss_2 + 0.3*loss_3 + 0.3*loss_4
 
         return loss

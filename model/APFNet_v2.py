@@ -72,7 +72,10 @@ class APFNetv2_sf(nn.Module):
         if not self.encoder_only:
             output = self.eac_module(output)
         output = torch.nn.functional.interpolate(output, input.size()[2:], mode='bilinear', align_corners=False)
-        return [output]
+        output_2 = torch.nn.functional.interpolate(output_2, input.size()[2:], mode='bilinear', align_corners=False)
+        output_3 = torch.nn.functional.interpolate(out_3_up, input.size()[2:], mode='bilinear', align_corners=False)
+        output_4 = torch.nn.functional.interpolate(out_4_up, input.size()[2:], mode='bilinear', align_corners=False)
+        return [output, output_4, output_3, output_4]
 
 
 class APFNetv2_sf_2(nn.Module):

@@ -41,7 +41,7 @@ def compute_speed(model, input_size, device, iteration=100):
 if __name__ == '__main__':
     parser = ArgumentParser()
 
-    parser.add_argument("--size", type=str, default="1024, 2048", help="input size(512,1024) of model")
+    parser.add_argument("--size", type=str, default="512, 1024", help="input size(512,1024) of model")
     parser.add_argument('--num-channels', type=int, default=3)
     parser.add_argument('--batch-size', type=int, default=1)
     parser.add_argument('--classes', type=int, default=19)

@@ -16,8 +16,8 @@ class AlignModule(nn.Module):
         h, w = low_feature.size()[2:]
         size = (h, w)
         low_feature = self.down_l(low_feature)
-        h_feature= self.down_h(h_feature)
-        h_feature = F.interpolate(h_feature,size=size, mode="bilinear", align_corners=False)
+        h_feature = self.down_h(h_feature)
+        h_feature = F.interpolate(h_feature, size=size, mode="bilinear", align_corners=False)
         flow = self.flow_make(torch.cat([h_feature, low_feature], 1))
         h_feature = self.flow_warp(h_feature_orign, flow, size=size)
 

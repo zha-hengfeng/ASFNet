@@ -192,7 +192,7 @@ def train_model(args):
 if __name__ == '__main__':
     start = timeit.default_timer()
     parser = ArgumentParser()
-    parser.add_argument('--model', default="apfnetv2_2",
+    parser.add_argument('--model', default="apfnetv2",
                         help="FCN-ResNet-18-C64, FCN34-c32")
     parser.add_argument('--dataset', default="cityscapes", help="dataset: cityscapes or camvid")
     parser.add_argument('--train_type', type=str, default="train",
@@ -205,7 +205,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', type=int, default=4, help=" the number of parallel threads")
     # parser.add_argument('--lr', type=float, default=4.5e-2, help="initial learning rate")
     parser.add_argument('--lr', type=float, default=5e-4, help="initial learning rate")
-    parser.add_argument('--batch_size', type=int, default=16, help="the batch size is set to 16 for 2 GPUs")
+    parser.add_argument('--batch_size', type=int, default=8, help="the batch size is set to 16 for 2 GPUs")
     parser.add_argument('--savedir', default="./checkpoint/", help="directory to save the model snapshot")
     parser.add_argument('--resume', type=str, default="",
                         help="use this file to load last checkpoint for continuing training")
