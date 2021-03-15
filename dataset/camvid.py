@@ -24,7 +24,7 @@ class CamVidDataSet(data.Dataset):
     def __init__(self, root='', list_path='', max_iters=None, crop_size=(360, 360),
                  mean=(128, 128, 128), scale=True, mirror=True, ignore_label=11):
         # self.root = root
-        self.root = 'D:/PyCharmProjects/EACNet-master/dataset/camvid'
+        self.root = 'dataset/camvid'
 
         self.list_path = list_path
         self.crop_h, self.crop_w = crop_size
@@ -123,7 +123,7 @@ class CamVidValDataSet(data.Dataset):
 
     def __init__(self, root='', list_path='',
                  f_scale=1, mean=(128, 128, 128), ignore_label=11):
-        self.root = 'D:/PyCharmProjects/EACNet-master/dataset/camvid'
+        self.root = 'dataset/camvid'
         # self.root = root
         self.list_path = list_path
         self.ignore_label = ignore_label

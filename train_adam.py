@@ -62,7 +62,8 @@ def train_model(args):
                                                         args.random_scale, args.random_mirror, args.num_workers)
 
     print('=====> Dataset statistics')
-    datas['classWeights'] = np.delete(datas['classWeights'], [19])
+    if args.dataset == 'cityscapes':
+        datas['classWeights'] = np.delete(datas['classWeights'], [19])
     print("data['classWeights']: ", datas['classWeights'])
     print('mean and std: ', datas['mean'], datas['std'])
 
@@ -70,7 +71,7 @@ def train_model(args):
     weight = torch.from_numpy(datas['classWeights'])
 
     if args.dataset == 'camvid':
-        criteria = CrossEntropyLoss2d(weight=weight, ignore_label=ignore_label)
+        criteria = CrossEntropyLoss2d(weight=weight, ignore_label=ignore_label, aux=args.aux)
     elif args.dataset == 'cityscapes':
         min_kept = int(args.batch_size // len(args.gpus) * h * w // 16)
         criteria = ProbOhemCrossEntropy2d(use_weight=True, ignore_label=255,
@@ -92,7 +93,7 @@ def train_model(args):
             model = model.cuda()  # 1-card data parallel
 
     args.savedir = (args.savedir + args.dataset + '/' + args.model + '/bs'
-                    + str(args.batch_size) + '_gpu' + str(args.gpu_nums) + "_" + str(args.train_type) + '_adam_ohem_e600/')
+                    + str(args.batch_size) + '_gpu' + str(args.gpu_nums) + "_" + str(args.train_type) + '_base2/')
 
     if not os.path.exists(args.savedir):
         os.makedirs(args.savedir)
@@ -138,7 +139,7 @@ def train_model(args):
         #     filter(lambda p: p.requires_grad, model.parameters()), args.lr, momentum=0.9, weight_decay=1e-4)
         # optimizer = torch.optim.Adam(model.parameters(), args.lr, (0.9, 0.999), eps=1e-08, weight_decay=1e-4)
         optimizer = torch.optim.Adam(
-            filter(lambda p: p.requires_grad, model.parameters()), args.lr, (0.9, 0.999), eps=1e-08, weight_decay=1e-4)
+            filter(lambda p: p.requires_grad, model.parameters()), args.lr, (0.9, 0.999), eps=1e-08, weight_decay=2e-4)
 
     lossTr_list = []
     epoches = []
@@ -192,12 +193,12 @@ def train_model(args):
 if __name__ == '__main__':
     start = timeit.default_timer()
     parser = ArgumentParser()
-    parser.add_argument('--model', default="apfnetv2",
+    parser.add_argument('--model', default="apfnetv2r34c32-gau",
                         help="FCN-ResNet-18-C64, FCN34-c32")
     parser.add_argument('--dataset', default="cityscapes", help="dataset: cityscapes or camvid")
     parser.add_argument('--train_type', type=str, default="train",
                         help="ontrain for training on train set, ontrainval for training on train+val set")
-    parser.add_argument('--max_epochs', type=int, default=400,
+    parser.add_argument('--max_epochs', type=int, default=350,
                         help="the number of epochs: 300 for train set, 350 for train+val set")
     parser.add_argument('--input_size', type=str, default="512,1024", help="input size of model")
     parser.add_argument('--random_mirror', type=bool, default=True, help="input image random mirror")
@@ -216,9 +217,10 @@ if __name__ == '__main__':
     parser.add_argument('--gpus', type=str, default="0", help="default GPU devices (0,1)")
     parser.add_argument('--save', action='store_true', default=False, help="Save the predicted image")
     parser.add_argument('--reload', type=str,
-                        default="checkpoint/cityscapes/FCN34-c32/bs16_gpu1_train_adam_ohem_e600/model_600.pth",
+                        default="checkpoint/camvid/res34c32/bs8_gpu1_train_base/model_350.pth",
                         help="use the file to load the checkpoint for evaluating or testing ")
     parser.add_argument('--aux', type=bool, default=True)
+    parser.add_argument('--up_mode', default='SF', help='upsample mode, None: bilinear, SF:semantic flow, GAU: guide attention upsample')
     args = parser.parse_args()
 
     if args.dataset == 'cityscapes':
@@ -227,7 +229,8 @@ if __name__ == '__main__':
         ignore_label = 19
     elif args.dataset == 'camvid':
         args.classes = 11
-        args.input_size = '360,480'
+        # args.input_size = '360,480'
+        args.input_size = '512,512'
         ignore_label = 11
     else:
         raise NotImplementedError(

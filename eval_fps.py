@@ -41,12 +41,12 @@ def compute_speed(model, input_size, device, iteration=100):
 if __name__ == '__main__':
     parser = ArgumentParser()
 
-    parser.add_argument("--size", type=str, default="512, 1024", help="input size(512,1024) of model")
+    parser.add_argument("--size", type=str, default="360, 480", help="input size(512,1024) of model")
     parser.add_argument('--num-channels', type=int, default=3)
     parser.add_argument('--batch-size', type=int, default=1)
-    parser.add_argument('--classes', type=int, default=19)
+    parser.add_argument('--classes', type=int, default=11)
     parser.add_argument('--iter', type=int, default=1000)
-    parser.add_argument('--model', type=str, default="apfnetv2_2", help="[FCN-ResNet-18-C32-3x3, FCN34-c32]"
+    parser.add_argument('--model', type=str, default="apfnetv2r34c32", help="[FCN-ResNet-18-C32-3x3, FCN34-c32]"
                                                                        "APFNet_CAM_r34, FCN-ResNet-18-C32")
     parser.add_argument("--gpus", type=str, default="0", help="gpu ids (default: 0)")
     args = parser.parse_args()

@@ -53,9 +53,15 @@ class ResNet(nn.Module):
         self.layer1 = self._make_layer(block, block_channel, layers[0], stride=2)
         self.layer2 = self._make_layer(block, 2*block_channel, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 4*block_channel, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 256, layers[3], dilated=2, stride=1)
-        # self.avgpool = nn.AvgPool2d(7, stride=1)
-        # self.fc = nn.Linear(512 * block.expansion, num_classes)
+
+        self.layer4 = self._make_layer(block, 8 * block_channel, layers[3], dilated=2, stride=1)
+
+        # if 8 * block_channel > 256:
+        #     self.layer4 = self._make_layer(block, 256, layers[3], dilated=2, stride=1)
+        # else:
+        #     self.layer4 = self._make_layer(block, 8 * block_channel, layers[3], dilated=2, stride=1)
+        self.avgpool = nn.AvgPool2d(7, stride=1)
+        self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):

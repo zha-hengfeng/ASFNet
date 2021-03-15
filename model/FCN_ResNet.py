@@ -29,11 +29,26 @@ class FCN_ResNet(nn.Module):
         self.layer4 = backbone.layer4
 
         self.classify = nn.Sequential(
-            nn.Conv2d(256, 64, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(8 * block_channel, 64, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
-            nn.Conv2d(64, num_classes, kernel_size=3, stride=1, padding=1, bias=False),
+            nn.Conv2d(64, num_classes, kernel_size=1, stride=1, padding=0, bias=False),
         )
+
+        # self.classify = nn.Sequential(
+        #     nn.Conv2d(8 * block_channel, 8 * block_channel, kernel_size=3, stride=1, padding=1, bias=False),
+        #     nn.BatchNorm2d(8 * block_channel),
+        #     nn.ReLU(inplace=True),
+        #     nn.Conv2d(8 * block_channel, num_classes, kernel_size=3, stride=1, padding=1, bias=False),
+        # )
+        # if 8 * block_channel >= 256:
+        #     self.classify = nn.Sequential(
+        #         nn.Conv2d(256, 64, kernel_size=3, stride=1, padding=1, bias=False),
+        #         nn.BatchNorm2d(64),
+        #         nn.ReLU(inplace=True),
+        #         nn.Conv2d(64, num_classes, kernel_size=3, stride=1, padding=1, bias=False),
+        #     )
+
         self.encoder_only = encoder_only
         if not encoder_only:
             self.eac_module = EAC_Module(num_classes, num_classes)

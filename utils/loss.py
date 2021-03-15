@@ -8,19 +8,33 @@ class CrossEntropyLoss2d(nn.Module):
     This file defines a cross entropy loss for 2D images
     '''
 
-    def __init__(self, weight=None, ignore_label=255):
+    def __init__(self, weight=None, ignore_label=255, aux=False):
         '''
         :param weight: 1D weight vector to deal with the class-imbalance
         Obtaining log-probabilities in a neural network is easily achieved by adding a LogSoftmax layer in the last layer of your network. 
         You may use CrossEntropyLoss instead, if you prefer not to add an extra layer.
         '''
         super().__init__()
-
+        self.aux = aux
         # self.loss = nn.NLLLoss2d(weight, ignore_index=255)
         self.loss = nn.NLLLoss(weight, ignore_index=ignore_label)
+        self.loss_2 = nn.NLLLoss(weight, ignore_index=ignore_label)
+        self.loss_3 = nn.NLLLoss(weight, ignore_index=ignore_label)
+        self.loss_4 = nn.NLLLoss(weight, ignore_index=ignore_label)
 
-    def forward(self, outputs, targets):
-        return self.loss(F.log_softmax(outputs, 1), targets)
+    def forward(self, preds, target):
+        output = preds[0]             # no-aux
+        loss = self.loss(F.log_softmax(output, 1), target)
+
+        if self.aux and len(preds) > 1:
+            pred, out_2, out_3, out_4 = preds
+            # loss_34 = self.criterion_34(b34, target)
+            loss_2 = self.loss_2(out_2, target)
+            loss_3 = self.loss_3(out_3, target)
+            loss_4 = self.loss_4(out_4, target)
+
+            # loss = loss + 0.05 * loss_2 + 0.15 * loss_3 + 0.4 * loss_4
+        return loss
 
 
 class FocalLoss2d(nn.Module):
@@ -110,9 +124,9 @@ class ProbOhemCrossEntropy2d(nn.Module):
             pred, out_2, out_3, out_4 = preds
             # loss_34 = self.criterion_34(b34, target)
             loss_2 = self.criterion_2(out_2, target)
-            loss_3 = self.criterion_3(out_2, target)
-            loss_4 = self.criterion_4(out_2, target)
+            loss_3 = self.criterion_3(out_3, target)
+            loss_4 = self.criterion_4(out_4, target)
 
-            loss = loss + 0.3*loss_2 + 0.3*loss_3 + 0.3*loss_4
+            loss = 0.4*loss + 0.05*loss_2 + 0.15*loss_3 + 0.4*loss_4
 
         return loss

@@ -125,12 +125,12 @@ def eval_model(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--model', default="apfnetv2", help="FCN-ResNet-18-C32, FCN-SKNet")
+    parser.add_argument('--model', default="res34c32", help="FCN-ResNet-18-C32, FCN-SKNet")
     parser.add_argument('--dataset', default="cityscapes", help="dataset: cityscapes or camvid")
     parser.add_argument('--num_workers', type=int, default=1, help="the number of parallel threads")
     parser.add_argument('--batch_size', type=int, default=1,
                         help=" the batch_size is set to 1 when evaluating or testing")
-    parser.add_argument('--checkpoint', default="checkpoint/cityscapes/apfnetv2/with_aux/model_568.pth")
+    parser.add_argument('--checkpoint', default="result/cityscapes/model_594.pth")
     parser.add_argument('--eval_num', type=int, default=50)
     # parser.add_argument('--checkpoint', type=str,
     #                     default="./checkpoint/cityscapes/DABNet_cityscapes.pth",

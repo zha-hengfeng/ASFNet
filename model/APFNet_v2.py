@@ -4,12 +4,12 @@ import torch.nn as nn
 from functools import reduce
 from .module.apf_att import APF_Moudle
 from .module.da_att import CAM_Module
-from .module.alignmodule import AlignModule, AlignModule_Segmap
+from .module.alignmodule import AlignModule, AlignModule_Segmap, AlignModule_GAU
 from .ResNet import *
 
 
 class APFNetv2_sf(nn.Module):
-    def __init__(self, num_classes=19, backbone='res18', encoder_only=True, block_channel=32, use3x3=False):
+    def __init__(self, num_classes=19, backbone='res18', encoder_only=True, block_channel=32, use3x3=False, up_mode='SF'):
         super(APFNetv2_sf, self).__init__()
         if backbone == 'res18':
             backbone = ResNet18(pretrained=False, block_channel=block_channel)
@@ -29,22 +29,30 @@ class APFNetv2_sf(nn.Module):
         self.layer3 = backbone.layer3
         self.layer4 = backbone.layer4
 
-        self.classify_4 = nn.Conv2d(256, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
+        self.classify_4 = nn.Conv2d(block_channel*8, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
+        if block_channel*8 > 256:
+            self.classify_4 = nn.Conv2d(256, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
         self.classify_3 = nn.Conv2d(4 * block_channel, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
         self.classify_2 = nn.Conv2d(2 * block_channel, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
 
-        self.b4_b2 = AlignModule(num_classes, num_classes)
-        self.b3_b2 = AlignModule(num_classes, num_classes)
+        if up_mode == 'SF':
+            self.b4_b2 = AlignModule(num_classes, num_classes)
+            self.b3_b2 = AlignModule(num_classes, num_classes)
+        else:
+            self.b4_b2 = AlignModule_GAU(num_classes, num_classes)
+            self.b3_b2 = AlignModule_GAU(num_classes, num_classes)
 
         self.apf_m = APF_Moudle(in_channels=num_classes, out_channels=num_classes, stride=1, M=3, r=16,
                                 L=num_classes)
 
         self.classify_out = nn.Conv2d(num_classes, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
+        # self.classify_out = nn.Conv2d(num_classes, num_classes, kernel_size=1, stride=1, padding=0, bias=False)
+        # Seg_Head
         # self.classify_out = nn.Sequential(
-        #     nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
-        #     nn.BatchNorm2d(64),
+        #     nn.Conv2d(num_classes, num_classes, kernel_size=3, stride=1, padding=1, bias=False),
+        #     nn.BatchNorm2d(num_classes),
         #     nn.ReLU(inplace=True),
-        #     nn.Conv2d(64, num_classes, kernel_size=1, stride=1, padding=1, bias=False),
+        #     nn.Conv2d(num_classes, num_classes, kernel_size=1, stride=1, padding=0, bias=False),
         # )
 
         self.encoder_only = encoder_only
@@ -62,9 +70,11 @@ class APFNetv2_sf(nn.Module):
         output_2 = self.classify_2(block_2_out)
         output_3 = self.classify_3(block_3_out)
         output_4 = self.classify_4(block_4_out)
+        output_backbone = torch.nn.functional.interpolate(output_4, input.size()[2:], mode='bilinear', align_corners=False)
         # output = self.sk_module([output_3, output_4])
         out_4_up = self.b4_b2([output_2, output_4])
-        out_3_up = self.b4_b2([output_2, output_3])
+        # out_3_up = self.b4_b2([output_2, output_3])         # gong xiang quan zhi
+        out_3_up = self.b3_b2([output_2, output_3])
 
         output = self.apf_m([output_2, out_3_up, out_4_up])
 
@@ -72,14 +82,14 @@ class APFNetv2_sf(nn.Module):
         if not self.encoder_only:
             output = self.eac_module(output)
         output = torch.nn.functional.interpolate(output, input.size()[2:], mode='bilinear', align_corners=False)
-        output_2 = torch.nn.functional.interpolate(output_2, input.size()[2:], mode='bilinear', align_corners=False)
+        # output_2 = torch.nn.functional.interpolate(output_2, input.size()[2:], mode='bilinear', align_corners=False)
         output_3 = torch.nn.functional.interpolate(out_3_up, input.size()[2:], mode='bilinear', align_corners=False)
         output_4 = torch.nn.functional.interpolate(out_4_up, input.size()[2:], mode='bilinear', align_corners=False)
-        return [output, output_4, output_3, output_4]
+        return [output, output_backbone, output_3, output_4]
 
 
 class APFNetv2_sf_2(nn.Module):
-    def __init__(self, num_classes=19, backbone='res18', encoder_only=True, block_channel=32, use3x3=False):
+    def __init__(self, num_classes=19, backbone='res18', encoder_only=True, block_channel=32, use3x3=False, up_mode='SF'):
         super(APFNetv2_sf_2, self).__init__()
         if backbone == 'res18':
             backbone = ResNet18(pretrained=False, block_channel=block_channel)
@@ -99,16 +109,23 @@ class APFNetv2_sf_2(nn.Module):
         self.layer3 = backbone.layer3
         self.layer4 = backbone.layer4
 
-        # self.classify_4 = nn.Conv2d(256, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
+        self.classify_backbone = nn.Conv2d(block_channel * 8, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
+        if block_channel * 8 > 256:
+            self.classify_backbone = nn.Conv2d(256, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
         # self.classify_3 = nn.Conv2d(4 * block_channel, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
-        self.classify_2 = nn.Conv2d(2 * block_channel, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
+        # self.classify_2 = nn.Conv2d(2 * block_channel, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
 
-        self.b4_b2 = AlignModule_Segmap(2 * block_channel, 256, 2 * block_channel)
-        self.b3_b2 = AlignModule_Segmap(2 * block_channel, 4 * block_channel, 2 * block_channel)
+        if up_mode == 'SF':
+            self.b4_b2 = AlignModule_Segmap(2 * block_channel, 256, 2 * block_channel)
+            self.b3_b2 = AlignModule_Segmap(2 * block_channel, 4 * block_channel, 2 * block_channel)
+        else:
+            self.b4_b2 = AlignModule_GAU(2 * block_channel, 256, 2 * block_channel)
+            self.b3_b2 = AlignModule_GAU(2 * block_channel, 4 * block_channel, 2 * block_channel)
 
         self.apf_m = APF_Moudle(in_channels=2 * block_channel, out_channels=2 * block_channel, stride=1, M=3, r=16,
                                 L=num_classes)
-
+        self.classify_4 = nn.Conv2d(2 * block_channel, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
+        self.classify_3 = nn.Conv2d(2 * block_channel, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
         self.classify_out = nn.Conv2d(2 * block_channel, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
         # self.classify_out = nn.Sequential(
         #     nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
@@ -129,7 +146,9 @@ class APFNetv2_sf_2(nn.Module):
         block_2_out = self.layer2(block_1_out)  # 2 * block_c
         block_3_out = self.layer3(block_2_out)  # 4 * block_c
         block_4_out = self.layer4(block_3_out)  # 256
-        output_2 = self.classify_2(block_2_out)
+        output_4 = self.classify_backbone(block_4_out)
+        output_backbone = torch.nn.functional.interpolate(output_4, input.size()[2:], mode='bilinear',
+                                                          align_corners=False)
         # output_3 = self.classify_3(block_3_out)
         # output_4 = self.classify_4(block_4_out)
         # output = self.sk_module([output_3, output_4])
@@ -138,8 +157,12 @@ class APFNetv2_sf_2(nn.Module):
 
         output = self.apf_m([block_2_out, out_3_up, out_4_up])
 
+        output_4 = self.classify_4(out_4_up)
+        output_3 = self.classify_3(out_3_up)
         output = self.classify_out(output)
         if not self.encoder_only:
             output = self.eac_module(output)
         output = torch.nn.functional.interpolate(output, input.size()[2:], mode='bilinear', align_corners=False)
-        return [output]
+        output_4 = torch.nn.functional.interpolate(output_4, input.size()[2:], mode='bilinear', align_corners=False)
+        output_3 = torch.nn.functional.interpolate(output_3, input.size()[2:], mode='bilinear', align_corners=False)
+        return [output, output_backbone, output_4, output_3]

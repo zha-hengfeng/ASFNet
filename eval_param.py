@@ -24,16 +24,16 @@ def count_param(args):
     total_paramters = netParams(model)
     print("the number of parameters: %d ==> %.2f M" % (total_paramters, (total_paramters / 1e6)))
 
-    input = torch.randn(1, 3, 480, 360)
+    input = torch.randn(1, 3, 360, 480)
     flops, params = profile(model, inputs=(input,))
     print("params:", params)
-    print("flops:", flops)
+    print("flops:", flops / 1e9)
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('--model', default="FCN-ResNet-18-C64",
+    parser.add_argument('--model', default="apfnetv2r34c32",
                         help="[FCN-ResNet-18-C64]")
-    parser.add_argument('--classes', type=int, default=19,
+    parser.add_argument('--classes', type=int, default=11,
                         help="the number of classes in the dataset. 19 and 11 for cityscapes and camvid, respectively")
     args = parser.parse_args()
 
