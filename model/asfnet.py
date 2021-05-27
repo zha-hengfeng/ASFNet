@@ -4,13 +4,14 @@ import torch.nn as nn
 from functools import reduce
 from .module.apf_att import APF_Moudle
 from .module.da_att import CAM_Module
-from .module.alignmodule import AlignModule, AlignModule_Segmap, AlignModule_GAU
+from .module.alignmodule import *
 from .ResNet import *
 
 
-class ASFNet(nn.Module):
-    def __init__(self, num_classes=19, backbone='res18', encoder_only=True, block_channel=32, use3x3=False, up_mode='SF'):
-        super(ASFNet, self).__init__()
+class APFNetv2_sf(nn.Module):
+    def __init__(self, num_classes=19, backbone='res18', encoder_only=True, block_channel=32, use3x3=False, up_mode='SF', asfm_in=3):
+        super(APFNetv2_sf, self).__init__()
+        self.asfm_in = asfm_in
         if backbone == 'res18':
             backbone = ResNet18(pretrained=False, block_channel=block_channel)
         if backbone == 'res34':
@@ -34,19 +35,24 @@ class ASFNet(nn.Module):
             self.classify_4 = nn.Conv2d(256, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
         self.classify_3 = nn.Conv2d(4 * block_channel, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
         self.classify_2 = nn.Conv2d(2 * block_channel, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
+        self.classify_1 = nn.Conv2d(    block_channel, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
 
+        self.up_mode = up_mode
         if up_mode == 'SF':
             self.b4_b2 = AlignModule(num_classes, num_classes)
             self.b3_b2 = AlignModule(num_classes, num_classes)
-        else:
+        elif up_mode == 'GAU':
             self.b4_b2 = AlignModule_GAU(num_classes, num_classes)
             self.b3_b2 = AlignModule_GAU(num_classes, num_classes)
+        else:
+            self.align_m = Bilinear_AlignModule()
 
-        self.apf_m = APF_Moudle(in_channels=num_classes, out_channels=num_classes, stride=1, M=3, r=16,
+        self.apf_m = APF_Moudle(in_channels=num_classes, out_channels=num_classes, stride=1, M=asfm_in, r=16,
                                 L=num_classes)
-
+        # conv_3x3 based
         self.classify_out = nn.Conv2d(num_classes, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
-        # self.classify_out = nn.Conv2d(num_classes, num_classes, kernel_size=1, stride=1, padding=0, bias=False)
+        # conv_1x1
+        # self.classify_out = nn.Conv2d(num_classes, num_classes, kernel_size=1, stride=1, bias=False)
         # Seg_Head
         # self.classify_out = nn.Sequential(
         #     nn.Conv2d(num_classes, num_classes, kernel_size=3, stride=1, padding=1, bias=False),
@@ -67,31 +73,52 @@ class ASFNet(nn.Module):
         block_2_out = self.layer2(block_1_out)  # 2 * block_c
         block_3_out = self.layer3(block_2_out)  # 4 * block_c
         block_4_out = self.layer4(block_3_out)  # 256
+        # Segmentation
+
         output_2 = self.classify_2(block_2_out)
         output_3 = self.classify_3(block_3_out)
         output_4 = self.classify_4(block_4_out)
+
+        if self.asfm_in == 4:
+            output_1 = self.classify_1(block_1_out)
+            out_1_dwn = nn.AvgPool2d(3, stride=2, padding=1)(output_1)
+
         output_backbone = torch.nn.functional.interpolate(output_4, input.size()[2:], mode='bilinear', align_corners=False)
+        # Align
         # output = self.sk_module([output_3, output_4])
-        out_4_up = self.b4_b2([output_2, output_4])
+        if self.up_mode == 'bilinear':
+            size = output_2.size()[2:]
+            out_4_up, out_3_up = self.align_m([output_4, output_3], size)
 
-        out_3_up = self.b4_b2([output_2, output_3])         # weight shared
-        # out_3_up = self.b3_b2([output_2, output_3])
+        else:
+            out_4_up = self.b4_b2([output_2, output_4])
+        # out_3_up = self.b4_b2([output_2, output_3])         # gong xiang quan zhi
+            out_3_up = self.b3_b2([output_2, output_3])
 
-        output = self.apf_m([output_2, out_3_up, out_4_up])
-
+        # asf module
+        if self.asfm_in == 2:
+            output = self.apf_m([out_3_up, out_4_up])
+        if self.asfm_in == 3:
+            output = self.apf_m([output_2, out_3_up, out_4_up])
+        if self.asfm_in == 4:
+            output = self.apf_m([out_1_dwn, output_2, out_3_up, out_4_up])
+        # final  conv
         output = self.classify_out(output)
-        if not self.encoder_only:
-            output = self.eac_module(output)
+        # if not self.encoder_only:
+        #     output = self.eac_module(output)
+        # for aux_loss
         output = torch.nn.functional.interpolate(output, input.size()[2:], mode='bilinear', align_corners=False)
-        # output_2 = torch.nn.functional.interpolate(output_2, input.size()[2:], mode='bilinear', align_corners=False)
+        output_2 = torch.nn.functional.interpolate(output_2, input.size()[2:], mode='bilinear', align_corners=False)
         output_3 = torch.nn.functional.interpolate(out_3_up, input.size()[2:], mode='bilinear', align_corners=False)
         output_4 = torch.nn.functional.interpolate(out_4_up, input.size()[2:], mode='bilinear', align_corners=False)
-        return [output, output_backbone, output_3, output_4]
+        return [output, output_2, output_3, output_4]
 
 
-class ASFNet_base(nn.Module):
-    def __init__(self, num_classes=19, backbone='res18', encoder_only=True, block_channel=32, use3x3=False, up_mode='SF'):
-        super(ASFNet_base, self).__init__()
+
+
+class APFNetv2_sf_2(nn.Module):
+    def __init__(self, num_classes=19, backbone='res18', encoder_only=True, block_channel=32, use3x3=False):
+        super(APFNetv2_sf_2, self).__init__()
         if backbone == 'res18':
             backbone = ResNet18(pretrained=False, block_channel=block_channel)
         if backbone == 'res34':
@@ -116,12 +143,8 @@ class ASFNet_base(nn.Module):
         # self.classify_3 = nn.Conv2d(4 * block_channel, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
         # self.classify_2 = nn.Conv2d(2 * block_channel, num_classes, kernel_size=3, stride=1, padding=1, bias=False)
 
-        if up_mode == 'SF':
-            self.b4_b2 = AlignModule_Segmap(2 * block_channel, 256, 2 * block_channel)
-            self.b3_b2 = AlignModule_Segmap(2 * block_channel, 4 * block_channel, 2 * block_channel)
-        else:
-            self.b4_b2 = AlignModule_GAU(2 * block_channel, 256, 2 * block_channel)
-            self.b3_b2 = AlignModule_GAU(2 * block_channel, 4 * block_channel, 2 * block_channel)
+        self.b4_b2 = AlignModule_Segmap(2 * block_channel, 256, 2 * block_channel)
+        self.b3_b2 = AlignModule_Segmap(2 * block_channel, 4 * block_channel, 2 * block_channel)
 
         self.apf_m = APF_Moudle(in_channels=2 * block_channel, out_channels=2 * block_channel, stride=1, M=3, r=16,
                                 L=num_classes)
@@ -167,3 +190,6 @@ class ASFNet_base(nn.Module):
         output_4 = torch.nn.functional.interpolate(output_4, input.size()[2:], mode='bilinear', align_corners=False)
         output_3 = torch.nn.functional.interpolate(output_3, input.size()[2:], mode='bilinear', align_corners=False)
         return [output, output_backbone, output_4, output_3]
+
+
+

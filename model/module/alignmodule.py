@@ -3,6 +3,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class Bilinear_AlignModule(nn.Module):
+    def __init__(self):
+        super(Bilinear_AlignModule, self).__init__()
+
+
+    def forward(self, inputs, size):
+        self.size = size
+        inputs = [F.interpolate(input, size=self.size, mode="bilinear", align_corners=False) for input in inputs]
+        return inputs
+
+
 class AlignModule(nn.Module):
     def __init__(self, inplane, outplane):
         super(AlignModule, self).__init__()

@@ -82,27 +82,48 @@ def build_model(model_name, num_classes):
         return APFNetv2_sf(num_classes=num_classes, backbone='res34', block_channel=16)
 
     if model_name == 'apfnetv2r34c32':
-        from model.APFNet_v2 import APFNetv2_sf
-        return APFNetv2_sf(num_classes=num_classes, backbone='res34', block_channel=32)
+        from model.APFNet_v2 import ASFNet
+        return ASFNet(num_classes=num_classes, backbone='res34', block_channel=32)
 
     if model_name == 'apfnetv2r34c32-gau':
-        from model.APFNet_v2 import APFNetv2_sf
-        return APFNetv2_sf(num_classes=num_classes, backbone='res34', block_channel=32, up_mode='GAU')
+        from model.APFNet_v2 import ASFNet
+        return ASFNet(num_classes=num_classes, backbone='res34', block_channel=32, up_mode='GAU')
 
     if model_name == 'apfnetv2r34c48':
-        from model.APFNet_v2 import APFNetv2_sf
-        return APFNetv2_sf(num_classes=num_classes, backbone='res34', block_channel=48)
+        from model.APFNet_v2 import ASFNet
+        return ASFNet(num_classes=num_classes, backbone='res34', block_channel=48)
 
     if model_name == 'apfnetv2r34c64':
-        from model.APFNet_v2 import APFNetv2_sf
-        return APFNetv2_sf(num_classes=num_classes, backbone='res34', block_channel=64)
+        from model.APFNet_v2 import ASFNet
+        return ASFNet(num_classes=num_classes, backbone='res34', block_channel=64)
 
 
-    if model_name == 'apfnetv2_2':
-        from model.APFNet_v2 import APFNetv2_sf_2
-        return APFNetv2_sf_2(num_classes=num_classes, backbone='res34', block_channel=32)
+    if model_name == 'res_asfm':
+        from model.APFNet_v2 import ASFNet_base
+        return ASFNet_base(num_classes=num_classes, backbone='res34', block_channel=32)
 
 
     if model_name == 'resnet_d':
         from model.resnet_d import resnet18
         return resnet18(pretrained=False)
+
+    # CASA reviews modify: all model modify in asfnet
+    if model_name == 'apfnet_r34c32_bi-2-stage':
+        from model.asfnet import APFNetv2_sf
+        return APFNetv2_sf(num_classes=num_classes, backbone='res34', block_channel=32, up_mode='bilinear', asfm_in=2)
+
+    if model_name == 'apfnet_r34c32_bi-3-stage':
+        from model.asfnet import APFNetv2_sf
+        return APFNetv2_sf(num_classes=num_classes, backbone='res34', block_channel=32, up_mode='bilinear', asfm_in=3)
+
+    if model_name == 'apfnet_r34c32_bi-4-stage':
+        from model.asfnet import APFNetv2_sf
+        return APFNetv2_sf(num_classes=num_classes, backbone='res34', block_channel=32, up_mode='bilinear', asfm_in=4)
+
+    if model_name == 'apfnet_r34c32_sf-3-stage':
+        from model.asfnet import APFNetv2_sf
+        return APFNetv2_sf(num_classes=num_classes, backbone='res34', block_channel=32, up_mode='SF', asfm_in=3)
+
+    if model_name == 'apfnet_r34c32_gau-3-stage':
+        from model.asfnet import APFNetv2_sf
+        return APFNetv2_sf(num_classes=num_classes, backbone='res34', block_channel=32, up_mode='GAU', asfm_in=3)

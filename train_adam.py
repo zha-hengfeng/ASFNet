@@ -93,7 +93,7 @@ def train_model(args):
             model = model.cuda()  # 1-card data parallel
 
     args.savedir = (args.savedir + args.dataset + '/' + args.model + '/bs'
-                    + str(args.batch_size) + '_gpu' + str(args.gpu_nums) + "_" + str(args.train_type) + '_base2/')
+                    + str(args.batch_size) + '_gpu' + str(args.gpu_nums) + "_" + str(args.train_type) + '_base_3/')
 
     if not os.path.exists(args.savedir):
         os.makedirs(args.savedir)
@@ -219,7 +219,7 @@ if __name__ == '__main__':
     parser.add_argument('--reload', type=str,
                         default="checkpoint/camvid/res34c32/bs8_gpu1_train_base/model_350.pth",
                         help="use the file to load the checkpoint for evaluating or testing ")
-    parser.add_argument('--aux', type=bool, default=True)
+    parser.add_argument('--aux', action='store_true')
     parser.add_argument('--up_mode', default='SF', help='upsample mode, None: bilinear, SF:semantic flow, GAU: guide attention upsample')
     args = parser.parse_args()
 

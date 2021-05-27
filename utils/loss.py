@@ -123,10 +123,11 @@ class ProbOhemCrossEntropy2d(nn.Module):
         if self.aux and len(preds) > 1:
             pred, out_2, out_3, out_4 = preds
             # loss_34 = self.criterion_34(b34, target)
-            loss_2 = self.criterion_2(out_2, target)
+            loss_2 = self.criterion_2(out_2, target)  # use for stage-3
             loss_3 = self.criterion_3(out_3, target)
             loss_4 = self.criterion_4(out_4, target)
 
-            loss = 0.4*loss + 0.05*loss_2 + 0.15*loss_3 + 0.4*loss_4
+            loss = loss + 0.10*loss_2 + 0.25*loss_3 + 0.40*loss_4     # use for stage-3
+            # loss = 0.4*loss + 0.20*loss_3 + 0.40*loss_4
 
         return loss
